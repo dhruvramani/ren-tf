@@ -37,9 +37,10 @@ def get_input_encoding(inputs, initializer=None, scope=None):
         encoded_input = tf.reduce_sum(inputs * positional_mask, axis=2)
         return encoded_input
 
+
+# NOTE : Modified this - doesn't use query and predicts the required labels
 def get_output_module(
         last_state,
-        encoded_query,
         num_blocks,
         vocab_size,
         activation=tf.nn.relu,
@@ -55,26 +56,31 @@ def get_output_module(
 
         # Use the encoded_query to attend over memories
         # (hidden states of dynamic last_state cell blocks)
-        attention = tf.reduce_sum(last_state * encoded_query, axis=2)
+        #attention = tf.reduce_sum(last_state * encoded_query, axis=2)
 
         # Subtract max for numerical stability (softmax is shift invariant)
-        attention_max = tf.reduce_max(attention, axis=-1, keep_dims=True)
-        attention = tf.nn.softmax(attention - attention_max)
-        attention = tf.expand_dims(attention, axis=2)
+        #attention_max = tf.reduce_max(attention, axis=-1, keep_dims=True)
+        #attention = tf.nn.softmax(attention - attention_max)
+        #attention = tf.expand_dims(attention, axis=2)
 
         # Weight memories by attention vectors
-        u = tf.reduce_sum(last_state * attention, axis=1)
+        #u = tf.reduce_sum(last_state * attention, axis=1)
 
         # R acts as the decoder matrix to convert from internal state to the output vocabulary size
-        R = tf.get_variable('R', [embedding_size, vocab_size])
-        H = tf.get_variable('H', [embedding_size, embedding_size])
+        
+        # NOTE : Might need to change this, can have additional layers
+        R = tf.get_variable('R', [embedding_size, vocab_size]) # NOTE - Vocab size refers to class size here
+        #H = tf.get_variable('H', [embedding_size, embedding_size])
 
-        q = tf.squeeze(encoded_query, axis=1)
-        y = tf.matmul(activation(q + tf.matmul(u, H)), R)
+        #q = tf.squeeze(encoded_query, axis=1)
+        #y = tf.matmul(activation(q + tf.matmul(u, H)), R)
+        y = tf.matmul(last_state, R)
         return y
     outputs = None
     return outputs
 
+
+# NOTE : Main module here  - run through this
 def get_outputs(inputs, params):
     "Return the outputs from the model which will be used in the loss function."
     embedding_size = params['embedding_size']
@@ -82,7 +88,7 @@ def get_outputs(inputs, params):
     vocab_size = params['vocab_size']
 
     story = inputs['story']
-    query = inputs['query']
+    #query = inputs['query']
 
     batch_size = tf.shape(story)[0]
 
@@ -115,17 +121,17 @@ def get_outputs(inputs, params):
         embedding_params_masked = embedding_params * embedding_mask
 
         story_embedding = tf.nn.embedding_lookup(embedding_params_masked, story)
-        query_embedding = tf.nn.embedding_lookup(embedding_params_masked, query)
+        #query_embedding = tf.nn.embedding_lookup(embedding_params_masked, query)
 
         # Input Module
         encoded_story = get_input_encoding(
             inputs=story_embedding,
             initializer=ones_initializer,
             scope='StoryEncoding')
-        encoded_query = get_input_encoding(
-            inputs=query_embedding,
-            initializer=ones_initializer,
-            scope='QueryEncoding')
+        #encoded_query = get_input_encoding(
+        #    inputs=query_embedding,
+        #    initializer=ones_initializer,
+        #    scope='QueryEncoding')
 
         # Memory Module
         # We define the keys outside of the cell so they may be used for memory initialization.
@@ -155,7 +161,6 @@ def get_outputs(inputs, params):
         # Output Module
         outputs = get_output_module(
             last_state=last_state,
-            encoded_query=encoded_query,
             num_blocks=num_blocks,
             vocab_size=vocab_size,
             initializer=normal_initializer,
