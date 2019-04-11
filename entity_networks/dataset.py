@@ -8,15 +8,22 @@ from tqdm import tqdm
 import tensorflow as tf
 from collections import OrderedDict
 
-_DIR = "/home/nevronas/Projects/Personal-Projects/Dhruv/NeuralDialog-CVAE/"
+
+#TODO :
+# + Write code for getting and parsing test data
+# + Fix rest of the files to use this data format
+
+_DIR = "/home/nevronas/Projects/Personal-Projects/Dhruv/NeuralDialog-CVAE/data/commonsense/"
 _GLOVE_PATH = '/home/nevronas/word_embeddings/glove_twitter'
 _EMB_DIM = 100
 _MAX_WLEN = 18
-_STEP_SIZE = 
+_VOCAB = -1 # Filled when function is called
+_STEP_SIZE = # TODO
 
-pickle_path = _DIR + "data/commonsense/data.pkl"
-partition_path = _DIR + "data/commonsense/storyid_partition.txt"
-annotation_path = _DIR + "data/commonsense/json_version/annotations.json" 
+pickle_path = _DIR + "data.pkl"
+metadata_path = _DIR + "tf/tfmetadata.json"
+partition_path = _DIR + "storyid_partition.txt"
+annotation_path = _DIR + "json_version/annotations.json" 
 
 classes = ["joy", "trust", "fear", "surprise", "sadness", "disgust", "anger", "anticipation"]
 
@@ -41,15 +48,18 @@ def init_glove(glove_path=_GLOVE_PATH): # Run only first time
     pickle.dump(word2idx, open('{}/27B.{}_idx.pkl'.format(glove_path, _EMB_DIM), 'wb'))
     return idx
 
-
 def tokenize(sentence):
     "Tokenize a string by splitting on non-word characters and stripping whitespace."
     return [token.strip().lower() for token in re.split(SPLIT_RE, sentence) if token.strip()]
 
 def load_glove():
+    global _VOCAB
     vectors = bcolz.open('{}/27B.{}.dat'.format(_GLOVE_PATH, _EMB_DIM))[:]
     words = pickle.load(open('{}/27B.{}_words.pkl'.format(_GLOVE_PATH, _EMB_DIM), 'rb'))
     word2idx = pickle.load(open('{}/27B.{}_idx.pkl'.format(_GLOVE_PATH, _EMB_DIM), 'rb'))
+
+    if(_VOCAB == -1):
+        _VOCAB = len(words)
 
     return {w: vectors[word2idx[w]] for w in words}
 
@@ -88,6 +98,7 @@ def create_dataset(load=True, data_type="train"):
     glove = load_glove()
 
     text_arr, all_labels, char_arr, mask_arr = [], [], [], []
+    stories_dat = []
     with open(partition_path, "r") as partition_file:
         for line in partition_file:
             id_key = line.split("\t")[0]
@@ -131,11 +142,11 @@ def create_dataset(load=True, data_type="train"):
             mask_arr.append(mask)       # Shape : [stories, s_d * c_d]
             text_arr.append(embeddings) # Shape : [stories, s_d, words, embedding_dim]
             char_arr.append(c_dim)      # Shape : [stories, 1]  - No. of chars. - to find upper bound
+            
+            # OR - decide
+            #stories_dat.append((embeddings, labels, mask, c_dim))
 
-    return text_arr, all_labels, mask_arr, char_arr
-
-
-# Functions from TF implementation
+    return text_arr, all_labels, mask_arr, char_arr # stories_dat # - ALL ARE LISTS
 
 def save_dataset(stories, path):
     """
@@ -145,7 +156,7 @@ def save_dataset(stories, path):
     `tf.train.Example`, rather than a `tf.train.SequenceExample`, which is
     _slightly_ faster.
     """
-    writer = tf.python_io.TFRecordWriter(path)
+    writer = tf.io.TFRecordWriter(path)
     for story, query, answer in stories:
         story_flat = [token_id for sentence in story for token_id in sentence]
 
@@ -162,3 +173,70 @@ def save_dataset(stories, path):
         example = tf.train.Example(features=features)
         writer.write(example.SerializeToString())
     writer.close()
+
+
+def pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_length, max_char_length):
+    
+    for i in range(len(text_arr)):
+        story = text_arr[i]
+        shape = story.shape
+        sentence_pad = max_sentence_length - shape[0]
+        word_pad = max_word_length - shape[1]
+        text_arr[i] = np.pad(story, ((0, sentence_pad), (0, word_pad), (0, 0)), 'constant')
+
+    for i in range(len(all_labels)):
+        label = all_labels[i]
+        shape = label.shape
+        pad_length = max_sentence_length * max_char_length - shape[0]
+        all_labels[i] = np.pad(label, ((0, pad_length), (0,0)), 'constant')
+
+    for i in range(len(mask_arr)):
+        mask = mask_arr[i]
+        shape = mask.shape
+        pad_length = max_sentence_length * max_char_length - shape[0]
+        mask_arr[i] = np.pad(mask, ((0, pad_length)), 'constant')
+
+    mask_arr = np.asarray(mask_arr)
+    text_arr = np.asarray(text_arr)
+    all_labels = np.asarray(all_labels)
+
+    return text_arr, all_labels, mask_arr
+
+
+def main():
+    # init_glove() # RUN ONLY FOR THE FIRST TIME 
+    if not os.path.exists(_DIR + 'tf/'):
+        os.makedirs(_DIR + 'tf/')
+
+    dataset_path_train = os.path.join(_DIR, 'tf/commonsense_train.tfrecords')
+    #dataset_path_test = os.path.join(_DIR,  'tf/commonsense_test.tfrecords')
+
+    text_arr, all_labels, mask_arr, char_arr = create_dataset()
+    
+    sentence_lengths = [story.shape[0] for story in text_arr]
+    word_lengths = [story.shape[1] for story in text_arr]
+
+    max_sentence_length = max(sentence_lengths)
+    max_word_length = max(word_lengths)
+    max_char_length = max(char_arr)
+
+    with open(metadata_path, 'w') as f:
+        metadata = {
+            'max_char_length': max_char_length,
+            'max_word_length': max_word_length,
+            'max_sentence_length': max_sentence_length,
+            'vocab_size': _VOCAB,
+            'filenames': {
+                'train': os.path.basename(dataset_path_train),
+                'test': os.path.basename(dataset_path_test),
+            }
+        }
+        json.dump(metadata, f)
+
+    text_arr, all_labels, mask_arr = pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_length, max_char_length)
+    stories_train = (text_arr, all_labels, mask_arr)
+    save_dataset(stories_train, dataset_path_train)
+
+if __name__ == '__main__':
+    main()
+
