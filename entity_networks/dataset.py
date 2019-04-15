@@ -245,7 +245,8 @@ def main():
 
     text_arr, all_labels, mask_arr = pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_length, max_char_length)
     stories_train = (text_arr, all_labels, mask_arr)
-    save_dataset(stories_train, dataset_path_train)
+    print(stories_train)
+    #save_dataset(stories_train, dataset_path_train)
 
 if __name__ == '__main__':
     main()
