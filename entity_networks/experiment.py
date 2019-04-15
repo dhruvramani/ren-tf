@@ -23,8 +23,8 @@ metadata_path = _DIR + "tf/tfmetadata.json"
 instances_path = _DIR + "tf/tfinstances.json"
 partition_path = _DIR + "storyid_partition.txt"
 annotation_path = _DIR + "json_version/annotations.json"
-dataset_path_test = DIR + "tf/commonsense_test.tfrecords"
-dataset_path_train = DIR + "tf/commonsense_train.tfrecords" 
+dataset_path_test = _DIR + "tf/commonsense_test.tfrecords"
+dataset_path_train = _DIR + "tf/commonsense_train.tfrecords" 
 
 
 def generate_experiment_fn(data_dir, dataset_id, num_epochs,
