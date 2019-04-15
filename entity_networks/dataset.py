@@ -22,8 +22,12 @@ _STEP_SIZE = # TODO
 
 pickle_path = _DIR + "data.pkl"
 metadata_path = _DIR + "tf/tfmetadata.json"
+instances_path = _DIR + "tf/tfinstances.json"
 partition_path = _DIR + "storyid_partition.txt"
 annotation_path = _DIR + "json_version/annotations.json" 
+dataset_path_test = DIR + "tf/commonsense_test.tfrecords"
+dataset_path_train = DIR + "tf/commonsense_train.tfrecords"
+
 
 classes = ["joy", "trust", "fear", "surprise", "sadness", "disgust", "anger", "anticipation"]
 
@@ -196,9 +200,9 @@ def pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_le
         pad_length = max_sentence_length * max_char_length - shape[0]
         mask_arr[i] = np.pad(mask, ((0, pad_length)), 'constant')
 
-    mask_arr = np.asarray(mask_arr)
-    text_arr = np.asarray(text_arr)
-    all_labels = np.asarray(all_labels)
+    mask_arr = np.asarray(mask_arr)     # Shape : [max_sentence_length, s_d * c_d]
+    text_arr = np.asarray(text_arr)     # Shape : [max_sentence_length, max_word_length, embedding_dim]
+    all_labels = np.asarray(all_labels) # Shape : [max_sentence_length, s_d * c_d, labels_dim]
 
     return text_arr, all_labels, mask_arr
 
@@ -220,11 +224,17 @@ def main():
     max_word_length = max(word_lengths)
     max_char_length = max(char_arr)
 
+    mask_dim, labels_dim = all_labels.shape[1:]
+    embedding_dim = story.shape[-1]
+
     with open(metadata_path, 'w') as f:
         metadata = {
             'max_char_length': max_char_length,
             'max_word_length': max_word_length,
             'max_sentence_length': max_sentence_length,
+            'mask_dim' : mask_dim,
+            'labels_dim' : labels_dim,
+            'emedding_dim' : embedding_dim
             'vocab_size': _VOCAB,
             'filenames': {
                 'train': os.path.basename(dataset_path_train),

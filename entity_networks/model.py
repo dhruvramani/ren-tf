@@ -30,10 +30,10 @@ def get_input_encoding(inputs, initializer=None, scope=None):
     encoding.
     """
     with tf.variable_scope(scope, 'Encoding', initializer=initializer):
-        _, _, max_sentence_length, embedding_size = inputs.get_shape().as_list()
+        _, _, max_word_length, embedding_size = inputs.get_shape().as_list()
         positional_mask = tf.get_variable(
             name='positional_mask',
-            shape=[max_sentence_length, embedding_size])
+            shape=[max_word_length, embedding_size])
         encoded_input = tf.reduce_sum(inputs * positional_mask, axis=2)
         return encoded_input
 
@@ -42,7 +42,7 @@ def get_input_encoding(inputs, initializer=None, scope=None):
 def get_output_module(
         last_state,
         num_blocks,
-        vocab_size,
+        labels_dim,
         activation=tf.nn.relu,
         initializer=None,
         scope=None):
@@ -52,7 +52,7 @@ def get_output_module(
     """
     with tf.variable_scope(scope, 'Output', initializer=initializer):
         last_state = tf.stack(tf.split(last_state, num_blocks, axis=1), axis=1)
-        _, _, embedding_size = last_state.get_shape().as_list()
+        _, _, embedding_size = last_state.get_shape().as_list() # NOTE : Might have to put one more _
 
         # Use the encoded_query to attend over memories
         # (hidden states of dynamic last_state cell blocks)
@@ -69,7 +69,7 @@ def get_output_module(
         # R acts as the decoder matrix to convert from internal state to the output vocabulary size
         
         # NOTE : Might need to change this, can have additional layers
-        R = tf.get_variable('R', [embedding_size, vocab_size]) # NOTE - Vocab size refers to class size here
+        R = tf.get_variable('R', [embedding_size, labels_dim]) # NOTE - Vocab size refers to class size here
         #H = tf.get_variable('H', [embedding_size, embedding_size])
 
         #q = tf.squeeze(encoded_query, axis=1)
@@ -86,6 +86,8 @@ def get_outputs(inputs, params):
     embedding_size = params['embedding_size']
     num_blocks = params['num_blocks']
     vocab_size = params['vocab_size']
+    labels_dim = params['labels_dim']
+
 
     story = inputs['story']
     #query = inputs['query']
@@ -109,6 +111,7 @@ def get_outputs(inputs, params):
         activation = partial(prelu, alpha=alpha)
 
         # Embeddings
+        
         embedding_params = tf.get_variable(
             name='embedding_params',
             shape=[vocab_size, embedding_size])
@@ -119,7 +122,7 @@ def get_outputs(inputs, params):
             shape=[vocab_size, 1],
             dtype=tf.float32)
         embedding_params_masked = embedding_params * embedding_mask
-
+        ''' # NOTE : Already embedded
         story_embedding = tf.nn.embedding_lookup(embedding_params_masked, story)
         #query_embedding = tf.nn.embedding_lookup(embedding_params_masked, query)
 
@@ -132,7 +135,7 @@ def get_outputs(inputs, params):
         #    inputs=query_embedding,
         #    initializer=ones_initializer,
         #    scope='QueryEncoding')
-
+        '''
         # Memory Module
         # We define the keys outside of the cell so they may be used for memory initialization.
         # Keys are initialized to a range outside of the main vocab.
@@ -162,7 +165,7 @@ def get_outputs(inputs, params):
         outputs = get_output_module(
             last_state=last_state,
             num_blocks=num_blocks,
-            vocab_size=vocab_size,
+            labels_dim=labels_dim,
             initializer=normal_initializer,
             activation=activation)
 
@@ -183,7 +186,7 @@ def get_loss(outputs, labels, mode):
     if mode == tf.contrib.learn.ModeKeys.INFER:
         return loss
 
-    loss = tf.losses.sparse_softmax_cross_entropy(
+    loss = tf.losses.sparse_sigmoid_cross_entropy(
         logits=outputs,
         labels=labels)
     return loss

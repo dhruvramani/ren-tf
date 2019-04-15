@@ -10,6 +10,7 @@ from tensorflow.contrib.learn.python.learn import learn_runner
 
 from entity_networks.experiment import generate_experiment_fn
 
+_DIR = "/home/nevronas/Projects/Personal-Projects/Dhruv/NeuralDialog-CVAE/data/commonsense/"
 def main():
     "Entrypoint for training."
     parser = argparse.ArgumentParser()
@@ -17,7 +18,7 @@ def main():
     parser.add_argument(
         '--data-dir',
         help='Directory containing data',
-        default='data/babi/records/')
+        default=_DIR)
     parser.add_argument(
         '--dataset-id',
         help='Unique id identifying dataset',

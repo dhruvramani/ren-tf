@@ -10,24 +10,24 @@ import tensorflow as tf
 def generate_input_fn(filename, metadata, batch_size, num_epochs=None, shuffle=False):
     "Return _input_fn for use with Experiment."
     def _input_fn():
-        max_story_length = metadata['max_story_length']
         max_sentence_length = metadata['max_sentence_length']
-        max_query_length = metadata['max_query_length']
+        max_word_length = metadata['max_word_length']
+        labels_dim = metadata['labels_dim']
+        mask_dim = metadata['mask_dim']
+        embedding_dim = metadata['embedding_dim']
+        #max_query_length = metadata['max_query_length']
 
         with tf.device('/cpu:0'):
             story_feature = tf.FixedLenFeature(
-                shape=[max_story_length, max_sentence_length],
+                shape=[max_sentence_length, max_word_length, embedding_dim],
                 dtype=tf.int64)
-            query_feature = tf.FixedLenFeature(
-                shape=[1, max_query_length],
-                dtype=tf.int64)
+            #query_feature = tf.FixedLenFeature( shape=[1, max_query_length], dtype=tf.int64)
             answer_feature = tf.FixedLenFeature(
-                shape=[],
+                shape=[max_sentence_length, mask_dim, labels_dim],
                 dtype=tf.int64)
 
             features = {
-                'story': story_feature,
-                'query': query_feature,
+                'story': story_feature, #'query': query_feature,
                 'answer': answer_feature,
             }
 
@@ -39,12 +39,10 @@ def generate_input_fn(filename, metadata, batch_size, num_epochs=None, shuffle=F
                 num_epochs=num_epochs)
 
             story = record_features['story']
-            query = record_features['query']
             answer = record_features['answer']
 
             features = {
                 'story': story,
-                'query': query,
             }
 
             return features, answer

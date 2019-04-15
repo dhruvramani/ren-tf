@@ -16,34 +16,45 @@ NUM_BLOCKS = 20
 EMBEDDING_SIZE = 100
 CLIP_GRADIENTS = 40.0
 
+_DIR = "/home/nevronas/Projects/Personal-Projects/Dhruv/NeuralDialog-CVAE/data/commonsense/"
+
+pickle_path = _DIR + "data.pkl"
+metadata_path = _DIR + "tf/tfmetadata.json"
+instances_path = _DIR + "tf/tfinstances.json"
+partition_path = _DIR + "storyid_partition.txt"
+annotation_path = _DIR + "json_version/annotations.json"
+dataset_path_test = DIR + "tf/commonsense_test.tfrecords"
+dataset_path_train = DIR + "tf/commonsense_train.tfrecords" 
+
+
 def generate_experiment_fn(data_dir, dataset_id, num_epochs,
                            learning_rate_min, learning_rate_max,
                            learning_rate_step_size, gradient_noise_scale):
     "Return _experiment_fn for use with learn_runner."
     def _experiment_fn(output_dir):
-        metadata_path = os.path.join(data_dir, '{}_10k.json'.format(dataset_id))
         with tf.gfile.Open(metadata_path) as metadata_file:
             metadata = json.load(metadata_file)
 
-        train_filename = os.path.join(data_dir, '{}_10k_{}.tfrecords'.format(dataset_id, 'train'))
-        eval_filename = os.path.join(data_dir, '{}_10k_{}.tfrecords'.format(dataset_id, 'test'))
+        #train_filename = os.path.join(data_dir, '{}_10k_{}.tfrecords'.format(dataset_id, 'train'))
+        #eval_filename = os.path.join(data_dir, '{}_10k_{}.tfrecords'.format(dataset_id, 'test'))
 
         train_input_fn = generate_input_fn(
-            filename=train_filename,
+            filename=dataset_path_train,
             metadata=metadata,
             batch_size=BATCH_SIZE,
             num_epochs=num_epochs,
             shuffle=True)
 
         eval_input_fn = generate_input_fn(
-            filename=eval_filename,
+            filename=dataset_path_test,
             metadata=metadata,
             batch_size=BATCH_SIZE,
             num_epochs=1,
             shuffle=False)
 
         vocab_size = metadata['vocab_size']
-        task_size = metadata['task_size']
+        embedding_dim = metadata['embedding_dim']
+        task_size = metadata['task_size'] # NOTE : DO SOMETHING ABOUT THIS
         train_steps_per_epoch = task_size // BATCH_SIZE
 
         run_config = tf.contrib.learn.RunConfig(
@@ -53,7 +64,8 @@ def generate_experiment_fn(data_dir, dataset_id, num_epochs,
 
         params = {
             'vocab_size': vocab_size,
-            'embedding_size': EMBEDDING_SIZE,
+            'embedding_size': embedding_dim,
+            'labels_dim' : metadata['labels_dim'],
             'num_blocks': NUM_BLOCKS,
             'learning_rate_min': learning_rate_min,
             'learning_rate_max': learning_rate_max,

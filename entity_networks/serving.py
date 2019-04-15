@@ -9,23 +9,25 @@ import tensorflow as tf
 
 def generate_serving_input_fn(metadata):
     "Returns _serving_input_fn for use with an export strategy."
-    max_story_length = metadata['max_story_length']
     max_sentence_length = metadata['max_sentence_length']
-    max_query_length = metadata['max_query_length']
+    max_word_length = metadata['max_word_length']
+    embedding_dim = metadata['embedding_dim']
+    mask_dim = metadata['mask_dim']
+    labels_dim = metadata['labels_dim']
 
     def _serving_input_fn():
         story_placeholder = tf.placeholder(
-            shape=[max_story_length, max_sentence_length],
+            shape=[max_sentence_length, max_word_length, embedding_dim],
             dtype=tf.int64,
             name='story')
-        query_placeholder = tf.placeholder(
-            shape=[1, max_query_length],
+        labels_placeholder = tf.placeholder(
+            shape=[max_sentence_length, mask_dim, labels_dim],
             dtype=tf.int64,
-            name='query')
+            name='labels')
 
         feature_placeholders = {
             'story': story_placeholder,
-            'query': query_placeholder
+            'labels': labels_placeholder
         }
 
         features = {
