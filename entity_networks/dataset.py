@@ -18,7 +18,6 @@ _GLOVE_PATH = '/home/nevronas/word_embeddings/glove_twitter'
 _EMB_DIM = 100
 _MAX_WLEN = 18
 _VOCAB = -1 # Filled when function is called
-_STEP_SIZE = # TODO
 
 pickle_path = _DIR + "data.pkl"
 metadata_path = _DIR + "tf/tfmetadata.json"
