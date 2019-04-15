@@ -233,7 +233,7 @@ def main():
             'max_sentence_length': max_sentence_length,
             'mask_dim' : mask_dim,
             'labels_dim' : labels_dim,
-            'emedding_dim' : embedding_dim
+            'emedding_dim' : embedding_dim,
             'vocab_size': _VOCAB,
             'filenames': {
                 'train': os.path.basename(dataset_path_train),
