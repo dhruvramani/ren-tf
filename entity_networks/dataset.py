@@ -98,7 +98,7 @@ def create_dataset(load=True, data_type="train"):
     global annotation_path, partition_path
     data_type = data_type.replace("train", "valid")
     annotation_file = open(annotation_path, "r")
-    raw_data = json.load(annotation_file, object_pairs_hook=OrderedDict)
+    raw_data = json.load(annotation_file)#, object_pairs_hook=OrderedDict)
     glove = load_glove()
 
     text_arr, all_labels, char_arr, mask_arr = [], [], [], []
