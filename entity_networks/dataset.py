@@ -96,16 +96,16 @@ def get_labels(charay):
 
 def create_dataset(load=True, data_type="train"):
     global annotation_path, partition_path
-    data_type = data_type.replace("train", "valid")
+    data_type = "valid" if data_type == "train" else data_type
     annotation_file = open(annotation_path, "r")
     raw_data = json.load(annotation_file)#, object_pairs_hook=OrderedDict)
     glove = load_glove()
 
     text_arr, all_labels, char_arr, mask_arr = [], [], [], []
     stories_dat = []
-    print(raw_data)
     with open(partition_path, "r") as partition_file:
         for line in partition_file:
+            print(line)
             id_key = line.split("\t")[0]
             story = raw_data[id_key]
             
