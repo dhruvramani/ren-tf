@@ -110,6 +110,7 @@ def create_dataset(load=True, data_type="train"):
             if(story["partition"] != data_type):
                 continue 
 
+            print(story)
             sentences = story["lines"]
             characters = sentences[0]["characters"]
             
@@ -119,7 +120,6 @@ def create_dataset(load=True, data_type="train"):
 
             for si in range(s_dim):
                 sent = sentences[str(si)]
-                text = sent["text"]
                 
                 print(text)
                 embed_string = re.sub(r"[^a-zA-Z]+", ' ', text)
