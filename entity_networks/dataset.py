@@ -121,6 +121,7 @@ def create_dataset(load=True, data_type="train"):
                 sent = sentences[str(si)]
                 text = sent["text"]
                 
+                print(text)
                 embed_string = re.sub(r"[^a-zA-Z]+", ' ', text)
                 embedding = [glove.get(word, glove['unk']) for word in embed_string.split(" ")]
                 embeddings.append(embedding)
