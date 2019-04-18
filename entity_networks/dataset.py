@@ -95,6 +95,7 @@ def get_labels(charay):
         return onehot
 
 def create_dataset(load=True, data_type="train"):
+    global annotation_path, partition_path
     data_type = data_type.replace("train", "valid")
     annotation_file = open(annotation_path, "r")
     raw_data = json.load(annotation_file, object_pairs_hook=OrderedDict)
@@ -102,6 +103,7 @@ def create_dataset(load=True, data_type="train"):
 
     text_arr, all_labels, char_arr, mask_arr = [], [], [], []
     stories_dat = []
+    print(raw_data)
     with open(partition_path, "r") as partition_file:
         for line in partition_file:
             id_key = line.split("\t")[0]
@@ -120,8 +122,8 @@ def create_dataset(load=True, data_type="train"):
 
             for si in range(s_dim):
                 sent = sentences[str(si)]
+                text = sent["text"]
                 
-                print(text)
                 embed_string = re.sub(r"[^a-zA-Z]+", ' ', text)
                 embedding = [glove.get(word, glove['unk']) for word in embed_string.split(" ")]
                 embeddings.append(embedding)
