@@ -94,11 +94,11 @@ def get_labels(charay):
         onehot = [1 if i in majority else 0 for i in classes]
         return onehot
 
-def create_dataset(load=True, data_type="train"):
+def create_dataset(load=True, data_type="test"):
     global annotation_path, partition_path
     data_type = "valid" if data_type == "train" else data_type
     annotation_file = open(annotation_path, "r")
-    raw_data = json.load(annotation_file)#, object_pairs_hook=OrderedDict)
+    raw_data = json.load(annotation_file, object_pairs_hook=OrderedDict)
     glove = load_glove()
 
     text_arr, all_labels, char_arr, mask_arr = [], [], [], []
@@ -108,35 +108,35 @@ def create_dataset(load=True, data_type="train"):
             id_key = line.split("\t")[0]
             story = raw_data[id_key]
             
-            print(story)
             if(story["partition"] != data_type):
                 continue 
 
             sentences = story["lines"]
-            characters = sentences[0]["characters"]
+            characters = sentences['1']["characters"]
             
             s_dim, c_dim, count = len(sentences.keys()), len(characters.keys()), 0
             mask_dim = s_dim * c_dim
             embeddings, labels, mask = [], [], [0] * mask_dim
 
             for si in range(s_dim):
-                sent = sentences[str(si)]
+                sent = sentences[str(si + 1)]
                 text = sent["text"]
                 
                 embed_string = re.sub(r"[^a-zA-Z]+", ' ', text)
                 embedding = [glove.get(word, glove['unk']) for word in embed_string.split(" ")]
                 embeddings.append(embedding)
-
-                charecs = sent["characters"].keys()
-                labels[si] = []
-
+                
+                charecs = list(sent["characters"].keys())
+                labels.append([])
                 for cj in range(c_dim):
                     char = sent["characters"][charecs[cj]]
                     one_hot = get_labels(char)
+                    labels[si].append([])
                     labels[si][cj] = one_hot
                     if(1 in one_hot):
                         mask[count] = 1
                     count += 1
+
 
             mask = np.asarray(mask)
             labels = np.asarray(labels)
@@ -186,7 +186,7 @@ def pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_le
         story = text_arr[i]
         shape = story.shape
         sentence_pad = max_sentence_length - shape[0]
-        word_pad = max_word_length - shape[1]
+        word_pad = max_word_length - len(story[0])
         text_arr[i] = np.pad(story, ((0, sentence_pad), (0, word_pad), (0, 0)), 'constant')
 
     for i in range(len(all_labels)):
@@ -219,14 +219,15 @@ def main():
     text_arr, all_labels, mask_arr, char_arr = create_dataset()
     
     sentence_lengths = [story.shape[0] for story in text_arr]
-    word_lengths = [story.shape[1] for story in text_arr]
+    word_lengths = [len(story[ss]) for story in text_arr for ss in range(story.shape[0])]
 
     max_sentence_length = max(sentence_lengths)
     max_word_length = max(word_lengths)
     max_char_length = max(char_arr)
 
-    mask_dim, labels_dim = all_labels.shape[1:]
-    embedding_dim = story.shape[-1]
+    print(len(all_labels[0][1]), len(all_labels[1]))
+    mask_dim, labels_dim = len(all_labels[0]), len(all_labels[0][0])
+    embedding_dim = _EMB_DIM
 
     with open(metadata_path, 'w') as f:
         metadata = {
