@@ -105,14 +105,13 @@ def create_dataset(load=True, data_type="train"):
     stories_dat = []
     with open(partition_path, "r") as partition_file:
         for line in partition_file:
-            print(line)
             id_key = line.split("\t")[0]
             story = raw_data[id_key]
             
+            print(story)
             if(story["partition"] != data_type):
                 continue 
 
-            print(story)
             sentences = story["lines"]
             characters = sentences[0]["characters"]
             
