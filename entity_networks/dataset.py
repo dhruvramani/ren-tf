@@ -186,9 +186,37 @@ def pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_le
         story = text_arr[i]
         shape = story.shape
         sentence_pad = max_sentence_length - shape[0]
-        word_pad = max_word_length - len(story[0])
-        text_arr[i] = np.pad(story, ((0, sentence_pad), (0, word_pad), (0, 0)), 'constant')
+        # FML
+        new_story = []
+        story_type = type(story[0])
+        if(story_type != list):
+            for j in range(shape[0]):
+                a = story[j].tolist()
+                new_story.append(a)
+        for j in range(shape[0]):
+            if(len(story[j]) != max_word_length):
+                if(story_type != list):
+                    a = new_story[j]
+                    for i in range(max_word_length - len(a)):
+                        a.append([0] * _EMB_DIM)
+                    new_story[j] = np.asarray(a)
+                else :
+                    story[j] = story[j] + [[0] * _EMB_DIM] * (max_word_length - len(list(story[j])))
+                    story[j] = np.asarray(story[j])
+        if(story_type != list):
+            story = np.asarray([new_story[k] for k in range(shape[0])])
+        else:
+            story = np.asarray([story[k] for k in range(shape[0])])
+        if(sentence_pad != 0):
+            text_arr[i] = np.pad(story, ((0, sentence_pad), (0, 0), (0, 0)), 'constant')
+        else :
+            text_arr[i] = story
 
+    for i in range(len(text_arr)):
+        if(text_arr[i].shape[1] != max_word_length):
+            pad_length = max_word_length - text_arr[i].shape[1]
+            text_arr[i] = np.pad(text_arr[i], ((0, 0), (0, pad_length), (0,0)), 'constant')
+    
     for i in range(len(all_labels)):
         label = all_labels[i]
         shape = label.shape
@@ -225,7 +253,7 @@ def main():
     max_word_length = max(word_lengths)
     max_char_length = max(char_arr)
 
-    print(len(all_labels[0][1]), len(all_labels[1]))
+    print(max_sentence_length, max_word_length, max_char_length)
     mask_dim, labels_dim = len(all_labels[0]), len(all_labels[0][0])
     embedding_dim = _EMB_DIM
 
@@ -247,7 +275,7 @@ def main():
 
     text_arr, all_labels, mask_arr = pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_length, max_char_length)
     stories_train = (text_arr, all_labels, mask_arr)
-    print(stories_train)
+    print(text_arr.shape, all_labels.shape, mask_arr.shape)
     #save_dataset(stories_train, dataset_path_train)
 
 if __name__ == '__main__':
