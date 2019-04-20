@@ -15,20 +15,22 @@ def generate_input_fn(filename, metadata, batch_size, num_epochs=None, shuffle=F
         labels_dim = metadata['labels_dim']
         mask_dim = metadata['mask_dim']
         embedding_dim = metadata['embedding_dim']
-        #max_query_length = metadata['max_query_length']
 
         with tf.device('/cpu:0'):
             story_feature = tf.FixedLenFeature(
                 shape=[max_sentence_length, max_word_length, embedding_dim],
-                dtype=tf.int64)
-            #query_feature = tf.FixedLenFeature( shape=[1, max_query_length], dtype=tf.int64)
-            answer_feature = tf.FixedLenFeature(
-                shape=[max_sentence_length, mask_dim, labels_dim],
-                dtype=tf.int64)
+                dtype=tf.float32)
+
+            labels_feature = tf.FixedLenFeature(
+                shape=[mask_dim, labels_dim],
+                dtype=tf.float32)
+
+            mask_feature = tf.FixedLenFeature(shape=[mask_dim], dtype=tf.float32)
 
             features = {
-                'story': story_feature, #'query': query_feature,
-                'answer': answer_feature,
+                'story': story_feature, 
+                'labels': labels_feature,
+                'mask': mask_feature
             }
 
             record_features = tf.contrib.learn.read_batch_record_features(
@@ -39,12 +41,14 @@ def generate_input_fn(filename, metadata, batch_size, num_epochs=None, shuffle=F
                 num_epochs=num_epochs)
 
             story = record_features['story']
-            answer = record_features['answer']
+            labels = record_features['labels']
+            mask = record_features['mask']
 
             features = {
                 'story': story,
+                'mask': mask
             }
 
-            return features, answer
+            return features, labels
 
     return _input_fn

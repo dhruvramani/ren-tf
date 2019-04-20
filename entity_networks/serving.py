@@ -18,16 +18,18 @@ def generate_serving_input_fn(metadata):
     def _serving_input_fn():
         story_placeholder = tf.placeholder(
             shape=[max_sentence_length, max_word_length, embedding_dim],
-            dtype=tf.int64,
+            dtype=tf.float32,
             name='story')
         labels_placeholder = tf.placeholder(
-            shape=[max_sentence_length, mask_dim, labels_dim],
-            dtype=tf.int64,
+            shape=[mask_dim, labels_dim],
+            dtype=tf.float32,
             name='labels')
+        mask_placeholder = tf.placeholder(shape=[mask_dim], type=tf.float32, name='mask')
 
         feature_placeholders = {
             'story': story_placeholder,
-            'labels': labels_placeholder
+            'labels': labels_placeholder,
+            'mask': mask_placeholder
         }
 
         features = {

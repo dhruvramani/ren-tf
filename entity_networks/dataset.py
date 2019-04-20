@@ -153,7 +153,7 @@ def create_dataset(load=True, data_type="test"):
 
     return text_arr, all_labels, mask_arr, char_arr # stories_dat # - ALL ARE LISTS
 
-def save_dataset(stories, path):
+def save_dataset(text_arr, all_labels, mask_arr, path):
     """
     Save the stories into TFRecords.
 
@@ -162,6 +162,21 @@ def save_dataset(stories, path):
     _slightly_ faster.
     """
     writer = tf.io.TFRecordWriter(path)
+    for i in range(text_arr.shape[0]):
+        story_feature = tf.train.Feature(float_list=tf.train.FloatList(value=text_arr[i]))
+        labels_feature = tf.train.Feature(float_list=tf.train.FloatList(value=all_labels[i]))
+        mask_feature = tf.train.Feature(float_list=tf.train.FloatList(value=mask_arr[i]))
+
+        features = tf.train.Features(feature={
+            'story': story_feature,
+            'labels': labels_feature,
+            'mask': mask_feature,
+        })
+
+        example = tf.train.Example(features=features)
+        writer.write(example.SerializeToString())
+    writer.close()
+    '''
     for story, query, answer in stories:
         story_flat = [token_id for sentence in story for token_id in sentence]
 
@@ -178,7 +193,7 @@ def save_dataset(stories, path):
         example = tf.train.Example(features=features)
         writer.write(example.SerializeToString())
     writer.close()
-
+    '''
 
 def pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_length, max_char_length):
     
@@ -246,6 +261,7 @@ def main():
 
     text_arr, all_labels, mask_arr, char_arr = create_dataset()
     
+    dataset_size = len(text_arr)
     sentence_lengths = [story.shape[0] for story in text_arr]
     word_lengths = [len(story[ss]) for story in text_arr for ss in range(story.shape[0])]
 
@@ -266,6 +282,7 @@ def main():
             'labels_dim' : labels_dim,
             'emedding_dim' : embedding_dim,
             'vocab_size': _VOCAB,
+            'dataset_size': dataset_size,
             'filenames': {
                 'train': os.path.basename(dataset_path_train),
                 'test': os.path.basename(dataset_path_test),
@@ -274,9 +291,9 @@ def main():
         json.dump(metadata, f)
 
     text_arr, all_labels, mask_arr = pad_stories(text_arr, all_labels, mask_arr, max_sentence_length, max_word_length, max_char_length)
-    stories_train = (text_arr, all_labels, mask_arr)
+    #stories_train = (text_arr, all_labels, mask_arr)
     print(text_arr.shape, all_labels.shape, mask_arr.shape)
-    #save_dataset(stories_train, dataset_path_train)
+    save_dataset(text_arr, all_labels, mask_arr, dataset_path_train)
 
 if __name__ == '__main__':
     main()

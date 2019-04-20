@@ -26,7 +26,6 @@ annotation_path = _DIR + "json_version/annotations.json"
 dataset_path_test = _DIR + "tf/commonsense_test.tfrecords"
 dataset_path_train = _DIR + "tf/commonsense_train.tfrecords" 
 
-
 def generate_experiment_fn(data_dir, dataset_id, num_epochs,
                            learning_rate_min, learning_rate_max,
                            learning_rate_step_size, gradient_noise_scale):
@@ -45,6 +44,7 @@ def generate_experiment_fn(data_dir, dataset_id, num_epochs,
             num_epochs=num_epochs,
             shuffle=True)
 
+        
         eval_input_fn = generate_input_fn(
             filename=dataset_path_test,
             metadata=metadata,
@@ -54,7 +54,7 @@ def generate_experiment_fn(data_dir, dataset_id, num_epochs,
 
         vocab_size = metadata['vocab_size']
         embedding_dim = metadata['embedding_dim']
-        task_size = metadata['task_size'] # NOTE : DO SOMETHING ABOUT THIS
+        task_size = metadata['dataset_size'] # NOTE : DO SOMETHING ABOUT THIS
         train_steps_per_epoch = task_size // BATCH_SIZE
 
         run_config = tf.contrib.learn.RunConfig(
@@ -80,9 +80,10 @@ def generate_experiment_fn(data_dir, dataset_id, num_epochs,
             config=run_config,
             params=params)
 
+        # TODO : Put precision and recall
         eval_metrics = {
-            'accuracy': tf.contrib.learn.MetricSpec(
-                metric_fn=tf.contrib.metrics.streaming_accuracy)
+            'f1': tf.contrib.learn.MetricSpec(
+                metric_fn=tf.contrib.metrics.f1_score)
         }
 
         train_monitors = [
@@ -90,7 +91,7 @@ def generate_experiment_fn(data_dir, dataset_id, num_epochs,
                 input_fn=eval_input_fn,
                 estimator=estimator,
                 metrics=eval_metrics,
-                metric_name='accuracy',
+                metric_name='f1',
                 every_steps=5 * train_steps_per_epoch,
                 max_patience=50 * train_steps_per_epoch,
                 minimize=False)
